@@ -1,7 +1,6 @@
 import pandas as pd
 import numpy as np
 from tqdm import tqdm
-import ast
 from metrics import *
 from measures import *
 
