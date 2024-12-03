@@ -6,6 +6,10 @@ create venv
 
 install requirements.txt
 
+```shell
+pip install -r requirements.txt
+```
+
 copy the dataset provided from the moodle in with the folder "dataset/..."
 
 open preprocessing.ipynb
