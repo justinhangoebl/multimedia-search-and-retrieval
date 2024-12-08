@@ -6,7 +6,8 @@ from measures import *
 
 def tf_idf_rec(title, artist, infos, tf_idf, topK=10):
     # Get the index of the song
-    song = infos[(infos["song"]==title) & (infos["artist"]==artist)]
+    song = infos[(infos["song"] == title) if title else True &
+                                                        (infos["artist"] == artist) if artist else True]
     # Get the tf-idf vector of the song
     tf_idf_vector = tf_idf[(tf_idf["id"]==song["id"].values[0])].values[0][1:]
     # Compute the cosine similarity between the song and all the others
