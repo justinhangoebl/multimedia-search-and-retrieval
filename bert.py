@@ -6,8 +6,7 @@ from measures import *
 
 def bert_rec(title, artist, infos, bert, topK=10):
     
-    song = infos[(infos["song"] == title) if title else True &
-                                                        (infos["artist"] == artist) if artist else True]
+    song = infos[(infos["song"]==title) & (infos["artist"]==artist)]
     bert_vector = bert[(bert["id"]==song["id"].values[0])].values[0][1:]
     
     similarities = bert.apply(lambda x: jaccard_similarity(bert_vector, x[1:]), axis=1)
