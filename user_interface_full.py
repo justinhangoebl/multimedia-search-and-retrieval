@@ -7,10 +7,12 @@ from vgg import *
 from resnet import *
 from incp import *
 from ivec import *
+from f_a import *
 import pandas as pd
 
 infos = pd.read_csv("dataset/id_information_mmsr.tsv", sep="\t")
 original_infos = infos.copy()
+url_data = pd.read_csv("dataset/id_url_mmsr.tsv", sep="\t")
 
 datasets = {
     "TF-IDF": lambda: pd.read_csv("dataset/id_lyrics_tf-idf_mmsr.tsv", sep="\t"),
@@ -23,6 +25,15 @@ datasets = {
     "ivec512": lambda: pd.read_csv("dataset/id_ivec512_mmsr.tsv", sep="\t"),
     "ivec1024": lambda: pd.read_csv("dataset/id_ivec1024_mmsr.tsv", sep="\t"),
 }
+
+
+def embed_links(recs):
+    recs = recs.merge(url_data, on="id", how="left")
+    recs["song_with_link"] = recs.apply(
+        lambda row: f"[{row['song'][:30]}...]({row['url']})" if len(row['song']) > 30 else f"[{row['song']}]({row['url']})",
+        axis=1
+    )
+    return recs
 
 
 def greet(Song, Artist, Amount, model):
@@ -53,78 +64,43 @@ def greet(Song, Artist, Amount, model):
 
         if len(partial_matches_combined) > 0:
             combined_suggestions = partial_matches_combined[['song', 'artist']].to_markdown(index=False)
-            if len(partial_matches_combined) == 1:
-                single_match = partial_matches_combined.iloc[0]
-                match_song = single_match["song"]
-                match_artist = single_match["artist"]
-                match_details = f"Did you mean:\n\n{combined_suggestions}\n\n"
-                if model == "ivec":
-                    model_data1 = datasets["ivec256"]()
-                    model_data2 = datasets["ivec512"]()
-                    model_data3 = datasets["ivec1024"]()
-                    recs = ivec_rec(match_song, match_artist, original_infos, model_data1, model_data2, model_data3,
-                                    topK=Amount)
-                elif model in datasets:
-                    model_data = datasets[model]()
-                    if model == "TF-IDF":
-                        recs = tf_idf_rec(match_song, match_artist, original_infos, model_data, topK=Amount)
-                    elif model == "Bert":
-                        recs = bert_rec(match_song, match_artist, original_infos, model_data, topK=Amount)
-                    elif model == "Word2Vec":
-                        recs = word2vec_rec(match_song, match_artist, original_infos, model_data, topK=Amount)
-                    elif model == "VGG19":
-                        recs = vgg19_rec(match_song, match_artist, original_infos, model_data, topK=Amount)
-                    elif model == "ResNet":
-                        recs = resnet_rec(match_song, match_artist, original_infos, model_data, topK=Amount)
-                    elif model == "Inception":
-                        recs = inception_rec(match_song, match_artist, original_infos, model_data, topK=Amount)
-                    else:
-                        recs = random_sample(match_song, match_artist, original_infos, topK=Amount)
-                else:
-                    return f"Invalid model: {model}. Please select a valid model."
-
-                recs = recs.merge(original_infos, on="id", suffixes=("_match", ""))
-                recommendations = recs[["song", "artist", "sim"]].to_markdown(index=False)
-                return match_details + "\nRecommendations:\n\n" + recommendations
             return f"Did you mean:\n\n{combined_suggestions}"
 
-        partial_matches_song = pd.DataFrame()
-        partial_matches_artist = pd.DataFrame()
-
-        if Song:
-            partial_matches_song = original_infos[original_infos["song"].str.contains(Song, case=False)]
-        if Artist:
-            partial_matches_artist = original_infos[original_infos["artist"].str.contains(Artist, case=False)]
-
-        if partial_matches_song.empty and partial_matches_artist.empty:
-            return "No matches found."
-
-        suggestions = ""
-        if not partial_matches_song.empty:
-            song_suggestions = partial_matches_song[["song", "artist"]].to_markdown(index=False)
-            suggestions += f"Songs matching '{Song}':\n\n{song_suggestions}\n\n"
-
-        if not partial_matches_artist.empty:
-            artist_suggestions = partial_matches_artist[["artist"]].drop_duplicates().to_markdown(index=False)
-            suggestions += f"Artists matching '{Artist}':\n\n{artist_suggestions}\n\n"
-
-        return f"Did you mean:\n\n{suggestions.strip()}"
+        return "No matches found."
 
     output = ""
-    match_count = 0
+    genres = pd.read_csv("dataset/id_genres_mmsr.tsv", sep="\t")
+    tags = pd.read_csv("dataset/id_tags_dict.tsv", sep="\t")
+    ivec256 = datasets["ivec256"]()
+    ivec512 = datasets["ivec512"]()
+    ivec1024 = datasets["ivec1024"]()
+    genres_dict, tags_dict, ivec_dict = preprocess_data(genres, tags, ivec256, ivec512, ivec1024)
 
     for _, match in matches.iterrows():
         match_song = original_infos.loc[match.name, "song"]
         match_artist = original_infos.loc[match.name, "artist"]
 
-        match_details = f"### Match {match_count + 1}\n**Song:** {match_song}\n\n**Artist:** {match_artist}\n\n"
+        match_details = f"**Song:** {match_song}\n**Artist:** {match_artist}\n\n"
 
         if model == "ivec":
             model_data1 = datasets["ivec256"]()
             model_data2 = datasets["ivec512"]()
             model_data3 = datasets["ivec1024"]()
-            recs = ivec_rec(match_song, match_artist, original_infos, model_data1, model_data2, model_data3,
-                            topK=Amount)
+            recs = ivec_rec(match_song, match_artist, original_infos, model_data1, model_data2, model_data3, topK=Amount)
+        elif model == "f_a ivec":
+            recs = []
+            match_id = match["id"]
+            genre_vector = genres_dict.get(match_id, set())
+            tag_vector = tags_dict.get(match_id, {})
+            ivec_vector = ivec_dict.get(match_id, np.zeros(len(ivec_dict[next(iter(ivec_dict))])))
+
+            for song_id in infos["id"]:
+                if song_id == match_id:
+                    continue  # Exclude the song itself
+                sim = compute_similarity(song_id, genre_vector, tag_vector, ivec_vector, genres_dict, tags_dict, ivec_dict, 1.0, 1.0, 1.0)
+                recs.append((song_id, sim))
+
+            recs = pd.DataFrame(recs, columns=["id", "sim"]).sort_values(by="sim", ascending=False).head(Amount)
         elif model in datasets:
             model_data = datasets[model]()
             if model == "TF-IDF":
@@ -139,18 +115,27 @@ def greet(Song, Artist, Amount, model):
                 recs = resnet_rec(match_song, match_artist, original_infos, model_data, topK=Amount)
             elif model == "Inception":
                 recs = inception_rec(match_song, match_artist, original_infos, model_data, topK=Amount)
-            else:
+        elif model == "Random":
                 recs = random_sample(match_song, match_artist, original_infos, topK=Amount)
         else:
             return f"Invalid model: {model}. Please select a valid model."
 
         recs = recs.merge(original_infos, on="id", suffixes=("_match", ""))
-        recommendations = recs[["song", "artist", "sim"]].to_markdown(index=False)
-        match_count += 1
+        recs = embed_links(recs)  # Add links to recommendations
+        if model != "Random":
+            recommendations = recs[["song_with_link", "artist", "sim"]].to_markdown(index=False)
+            recommendations = recommendations.replace("song_with_link", "Songs")
+            recommendations = recommendations.replace("artist", "Artist")
+            recommendations = recommendations.replace("sim", "Similarity")
+        else:
+            recommendations = recs[["song_with_link", "artist"]].to_markdown(index=False)
+            recommendations = recommendations.replace("song_with_link", "Songs")
+            recommendations = recommendations.replace("artist", "Artist")
+        # rename song_with_link to songs
 
-        output += match_details + "\n" + recommendations + "\n\n---\n\n"
+        output += match_details + "Recommendations:\n\n" + recommendations + "\n\n"
 
-    return output.strip("\n---\n")
+    return output.strip()
 
 
 custom_css = """
@@ -171,7 +156,7 @@ demo = gr.Interface(
         "text",
         gr.Slider(value=10, minimum=1, maximum=50, step=1, label="Number of Recommendations"),
         gr.Radio(
-            ["Bert", "Random", "TF-IDF", "Word2Vec", "VGG19", "ResNet", "Inception", "ivec"],
+            ["Bert", "Random", "TF-IDF", "Word2Vec", "VGG19", "ResNet", "Inception", "ivec", "f_a ivec"],
             label="Model",
             value="Bert",
         ),
@@ -182,3 +167,4 @@ demo = gr.Interface(
 )
 
 demo.launch()
+
