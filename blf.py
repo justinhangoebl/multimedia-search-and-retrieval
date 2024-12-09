@@ -6,7 +6,7 @@ from measures import *
 import warnings
 warnings.filterwarnings("ignore")
 
-def mfcc_rec(title, artist, infos, mfcc, topK=10):
+def mfcc_rec(title, artist, infos, blf, topK=10):
     # Handle case where only one of `title` or `artist` is provided
     if title and not artist:
         # Find all artists that have a song with the given title
@@ -25,18 +25,18 @@ def mfcc_rec(title, artist, infos, mfcc, topK=10):
     recommendations = []
 
     for _, match in matches.iterrows():
-        # Get the MFCC vector for the current match
-        mfcc_vector = mfcc[(mfcc["id"] == match["id"])].values[0][1:].astype(float)
+        # Get the BLF vector for the current match
+        blf_vector = blf[(blf["id"] == match["id"])].values[0][1:].astype(float)
 
         # Compute cosine similarity for all songs
-        similarities = mfcc.iloc[:, 1:].apply(
-            lambda x: cosine_similarity(mfcc_vector, x.astype(float).values), axis=1
+        similarities = blf.iloc[:, 1:].apply(
+            lambda x: cosine_similarity(blf_vector, x.astype(float).values), axis=1
         )
 
         # Get the top K most similar songs (excluding the current match)
         topK_similarities = similarities.nlargest(topK + 1)[1:]
         topK_indexes = topK_similarities.index
-        topK_songs = mfcc.iloc[topK_indexes, :]
+        topK_songs = blf.iloc[topK_indexes, :]
         topK_ids = topK_songs["id"].values
 
         # Append results for the current match
@@ -62,18 +62,19 @@ from joblib import Parallel, delayed
 import os
 import numpy as np
 
-def all_mfcc_recs(infos, mfcc, topK=10):
+def all_blf_recs(infos, blf, topK=10):
     n_jobs = max(1, os.cpu_count() // 2)
-    print(f"Using {n_jobs} cores for MFCC processing.")
+    print(f"Using {n_jobs} cores for BLF processing.")
 
     def process_song(song):
-        rec = mfcc_rec(song["song"], song["artist"], infos, mfcc, topK)
+        rec = mfcc_rec(song["song"], song["artist"], infos, blf, topK)
         infos_idx = rec["infos_idx"].values
         sims = rec["sim"].values
         row = np.zeros(len(infos))
         row[infos_idx] = sims
         return row
 
-    with tqdm_joblib(desc="Processing MFCC Recommendations", total=len(infos)):
+    with tqdm_joblib(desc="Processing BLF Recommendations", total=len(infos)):
         recs = Parallel(n_jobs=n_jobs)(delayed(process_song)(song) for _, song in infos.iterrows())
     return np.array(recs)
+
