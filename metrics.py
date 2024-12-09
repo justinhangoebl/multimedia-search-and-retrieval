@@ -1,4 +1,5 @@
 import numpy as np
+import ast
 
 #accurcay metrics
 
@@ -62,6 +63,69 @@ def ndcg_at_k(y_pred, relevant, k):
 
 # behavior metrics
 
-def avg_popularity_at_k(y_pred, k, item_popularity):
-    return np.mean([np.mean([item_popularity[i] for i in y[:k]]) for y in y_pred])
+def avg_popularity_at_k(y_pred, item_popularity, k=10):
+    top_k_items = np.argsort(y_pred, axis=1)[:, ::-1][:, :k]
+    return np.mean([np.mean([item_popularity[i] for i in y]) for y in top_k_items])
 
+def avg_coverage_at_k(y_pred, total_items, k=10):
+    top_k_items = np.argsort(y_pred, axis=1)[:, ::-1][:, :k]
+    
+    # Find unique items in the recommendations
+    unique_items = np.unique(top_k_items)
+    
+    # Calculate coverage as a proportion of total items
+    return len(unique_items) / total_items
+
+
+def intra_list_diversity_at_k(y_pred, item_similarity, k=10):
+    top_k_items = np.argsort(y_pred, axis=1)[:, ::-1][:, :k]
+    
+    ild_scores = []
+    for items in top_k_items:
+        pairwise_diversity = [
+            1 - item_similarity[i, j] for i in items for j in items if i != j
+        ]
+        avg_diversity = np.mean(pairwise_diversity)
+        ild_scores.append(avg_diversity)
+    
+    return np.mean(ild_scores)
+
+
+def novelty_at_k(y_pred, item_popularity, k=10):
+    # Normalize popularity to avoid log(0)
+    popularity_scores = np.clip(item_popularity, 1e-10, None)
+    
+    top_k_items = np.argsort(y_pred, axis=1)[:, ::-1][:, :k]
+    
+    novelty_scores = []
+    for items in top_k_items:
+        novelty = np.mean([np.log2(1 / popularity_scores[i]) for i in items])
+        novelty_scores.append(novelty)
+    
+    return np.mean(novelty_scores)
+
+def diversity_at_k(y_pred, tags, genre_tags, k=10):
+    
+    tags_list = [list(ast.literal_eval(d).keys()) for d in tags['(tag, weight)']]
+    genre_tags = genre_tags['genre'].values
+    result = [
+        list(set(row2) - set(row1)) for row1, row2 in zip(tags_list, genre_tags)
+    ]
+
+    # Convert back to a 2D array
+    tags_array = np.array(result, dtype=object)
+
+    top_k_items = np.argsort(y_pred, axis=1)[:, ::-1][:, :k]
+    
+    diversity_scores = []
+    for items in top_k_items:
+        # Collect all tags for the recommended items
+        all_tags = set()
+        for item in items:
+            all_tags.update(tags_array[item])
+                
+        # Count the unique non-genre tags
+        diversity_scores.append(len(all_tags))
+    
+    # Return the average diversity score
+    return np.mean(diversity_scores)
