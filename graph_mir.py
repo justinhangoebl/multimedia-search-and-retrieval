@@ -61,11 +61,12 @@ class MusicRetrievalSystem:
         fused_features = np.hstack(combined_features_aligned)
         
         # Dimensionality reduction
-        reducer = umap.UMAP(n_components=10, random_state=42)
-        reduced_features = reducer.fit_transform(fused_features)
+        #reducer = umap.UMAP(n_components=10, random_state=42)
+        #reduced_features = reducer.fit_transform(fused_features)
         
         # Compute similarity matrix
-        similarity_matrix = cosine_similarity(reduced_features)
+        #similarity_matrix = cosine_similarity(reduced_features)
+        similarity_matrix = cosine_similarity(fused_features)
         
         # Create graph based on similarity
         for i, id_i in tqdm(enumerate(common_ids), total=len(common_ids), desc="Creating graph"):
