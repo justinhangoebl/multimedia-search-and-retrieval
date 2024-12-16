@@ -4,20 +4,22 @@ import ast
 #accurcay metrics
 
 def precision_at_k_1d(y_pred, relevant, k):
-    # Get the indices of the top-k predictions
-    pred_index = np.argsort(y_pred)[::-1][:k]
-    # Count how many of the top-k are relevant
-    relevant_count = sum([relevant[i] for i in pred_index])
+    # Get indices of the top-k items based on scores
+    top_k_indices = np.argsort(y_pred)[-k:][::-1]  # Sort descending
+    # Count how many of the top-k items are relevant
+    relevant_count = np.sum(relevant[top_k_indices])
+        
     # Compute precision
     return relevant_count / k
 
 def recall_at_k_1d(y_pred, relevant, k):
     # Get the indices of the top-k predictions
-    pred_index = np.argsort(y_pred)[::-1][:k]
+    top_k_indices  = np.argsort(y_pred)[::-1][:k]
     # Count how many of the top-k are relevant
-    relevant_count = sum([relevant[i] for i in pred_index])
+    relevant_count = np.sum(relevant[top_k_indices])
+    total_relevant = np.sum(relevant)
     # Compute recall
-    return relevant_count / sum(relevant) if sum(relevant) > 0 else 0
+    return relevant_count / total_relevant if total_relevant > 0 else 0
 
 def precision_at_k(y_pred, relevant, k):
     return np.mean([precision_at_k_1d(y, r, k) for y, r in zip(y_pred, relevant)])
@@ -35,10 +37,8 @@ def mrr(y_pred, relevant):
         for i, idx in enumerate(ranked_indices):
             if r[idx] > 0:  # Check if the item is relevant
                 arr.append(1 / (i + 1))  # MRR is the reciprocal of the rank (1-based)
-                continue
+                break
         
-        # If no relevant items are found, return 0
-        arr.append(0)
     
     return np.mean(arr)
 
@@ -65,7 +65,7 @@ def ndcg_at_k(y_pred, relevant, k):
 
 def avg_popularity_at_k(y_pred, item_popularity, k=10):
     top_k_items = np.argsort(y_pred, axis=1)[:, ::-1][:, :k]
-    return np.mean([np.mean([item_popularity[i] for i in y]) for y in top_k_items])
+    return np.mean([np.mean([item_popularity[i] for i in y]) for y in top_k_items])/np.mean(item_popularity)
 
 def avg_coverage_at_k(y_pred, total_items, k=10):
     top_k_items = np.argsort(y_pred, axis=1)[:, ::-1][:, :k]

@@ -85,3 +85,23 @@ def all_ivec_recs(infos, ivec256, ivec512, ivec1024, topK=10):
 
         all_recommendations = [rec for rec_group in recs for rec in rec_group]
         return pd.DataFrame(all_recommendations)
+
+def all_ivec_recs_matrix(infos, ivec256, ivec512, ivec1024, topK=10):
+    n_jobs = max(1, os.cpu_count() // 2)
+    print(f"Using {n_jobs} cores for iVector recommendation processing.")
+
+    def process_song(song):
+        try:
+            rec = ivec_rec(song["song"], song["artist"], infos, ivec256, ivec512, ivec1024, topK)
+            infos_idx = rec["infos_idx"].values
+            sims = rec["sim"].values
+            row = np.zeros(len(infos))
+            row[infos_idx] = sims
+            return row
+        except Exception as e:
+            print(f"Error processing song {song['song']} by {song['artist']}: {e}")
+            return np.zeros(len(infos))
+
+    with tqdm_joblib(desc="Processing iVector Recommendations", total=len(infos)):
+        recs = Parallel(n_jobs=n_jobs)(delayed(process_song)(song) for _, song in infos.iterrows())
+    return np.array(recs)

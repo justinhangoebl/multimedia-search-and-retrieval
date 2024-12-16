@@ -84,4 +84,18 @@ def all_mfcc_recs(infos, mfcc, topK=10):
         all_recommendations = [rec for rec_group in recs for rec in rec_group]
         return pd.DataFrame(all_recommendations)
 
-        
+def all_mfcc_recs_matrix(infos, mfcc, topK=10):
+    n_jobs = max(1, os.cpu_count() // 2)
+    print(f"Using {n_jobs} cores for MFCC processing.")
+
+    def process_song(song):
+        rec = mfcc_rec(song["song"], song["artist"], infos, mfcc, topK)
+        infos_idx = rec["infos_idx"].values
+        sims = rec["sim"].values
+        row = np.zeros(len(infos))
+        row[infos_idx] = sims
+        return row
+
+    with tqdm_joblib(desc="Processing BERT Recommendations", total=len(infos)):
+        recs = Parallel(n_jobs=n_jobs)(delayed(process_song)(song) for _, song in infos.iterrows())
+    return np.array(recs)

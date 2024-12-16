@@ -87,6 +87,22 @@ def all_bert_recs(infos, bert, topK=10):
     recs_df = pd.DataFrame(all_recommendations)
     return recs_df
 
+def all_bert_recs_matrix(infos, bert, topK=10):
+    n_jobs = max(1, os.cpu_count() // 2)
+    print(f"Using {n_jobs} cores for BERT processing.")
+
+    def process_song(song):
+        rec = bert_rec(song["song"], song["artist"], infos, bert, topK)
+        infos_idx = rec["infos_idx"].values
+        sims = rec["sim"].values
+        row = np.zeros(len(infos))
+        row[infos_idx] = sims
+        return row
+
+    with tqdm_joblib(desc="Processing BERT Recommendations", total=len(infos)):
+        recs = Parallel(n_jobs=n_jobs)(delayed(process_song)(song) for _, song in infos.iterrows())
+    return np.array(recs)
+
 
 
 

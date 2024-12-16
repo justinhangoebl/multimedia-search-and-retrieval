@@ -77,3 +77,22 @@ def all_vgg19_recs(infos, vgg19, topK=10):
         return pd.DataFrame(all_recommendations)
 
         
+def all_vgg19_recs_matrix(infos, vgg19, topK=10):
+    n_jobs = max(1, os.cpu_count() // 2)
+    print(f"Using {n_jobs} cores for VGG19 recommendation processing.")
+
+    def process_song(song):
+        try:
+            rec = vgg19_rec(song["song"], song["artist"], infos, vgg19, topK)
+            infos_idx = rec["infos_idx"].values
+            sims = rec["sim"].values
+            row = np.zeros(len(infos))
+            row[infos_idx] = sims
+            return row
+        except Exception as e:
+            print(f"Error processing song {song['song']} by {song['artist']}: {e}")
+            return np.zeros(len(infos))
+
+    with tqdm_joblib(desc="Processing VGG19 Recommendations", total=len(infos)):
+        recs = Parallel(n_jobs=n_jobs)(delayed(process_song)(song) for _, song in infos.iterrows())
+    return np.array(recs)
