@@ -70,13 +70,23 @@ def all_bert_recs(infos, bert, topK=10):
         rec = bert_rec(song["song"], song["artist"], infos, bert, topK)
         infos_idx = rec["infos_idx"].values
         sims = rec["sim"].values
-        row = np.zeros(len(infos))
-        row[infos_idx] = sims
-        return row
+        source_id = song["id"]  # Get the source song ID
+        recommendations = [
+            {"source_id": source_id, "target_id": infos.iloc[idx]["id"], "similarity": sim}
+            for idx, sim in zip(infos_idx, sims)
+        ]
+        return recommendations
 
+    all_recommendations = []
     with tqdm_joblib(desc="Processing BERT Recommendations", total=len(infos)):
-        recs = Parallel(n_jobs=n_jobs)(delayed(process_song)(song) for _, song in infos.iterrows())
-    return np.array(recs)
+        results = Parallel(n_jobs=n_jobs)(delayed(process_song)(song) for _, song in infos.iterrows())
+        for recs in results:
+            all_recommendations.extend(recs)
+
+    # Convert to a DataFrame for saving and further use
+    recs_df = pd.DataFrame(all_recommendations)
+    return recs_df
+
 
 
 

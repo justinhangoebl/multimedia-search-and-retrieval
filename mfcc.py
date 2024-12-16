@@ -67,13 +67,21 @@ def all_mfcc_recs(infos, mfcc, topK=10):
     print(f"Using {n_jobs} cores for MFCC processing.")
 
     def process_song(song):
+        source_id = song["id"]
         rec = mfcc_rec(song["song"], song["artist"], infos, mfcc, topK)
         infos_idx = rec["infos_idx"].values
         sims = rec["sim"].values
-        row = np.zeros(len(infos))
-        row[infos_idx] = sims
-        return row
 
-    with tqdm_joblib(desc="Processing BERT Recommendations", total=len(infos)):
+        recommendations = [
+            {"source_id": source_id, "target_id": infos.iloc[idx]["id"], "similarity": sim}
+            for idx, sim in zip(infos_idx, sims)
+        ]
+        return recommendations
+
+    with tqdm_joblib(desc="Processing MFCC Recommendations", total=len(infos)):
         recs = Parallel(n_jobs=n_jobs)(delayed(process_song)(song) for _, song in infos.iterrows())
-    return np.array(recs)
+
+        all_recommendations = [rec for rec_group in recs for rec in rec_group]
+        return pd.DataFrame(all_recommendations)
+
+        
