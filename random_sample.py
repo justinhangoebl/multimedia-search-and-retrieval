@@ -3,6 +3,7 @@ from tqdm import tqdm
 from metrics import *
 from measures import *
 import warnings
+import pandas as pd
 warnings.filterwarnings("ignore")
 
 def random_sample(title, artist, infos, topK=10):
@@ -22,14 +23,20 @@ def all_random_recs(infos, topK=10):
     print(f"Using {n_jobs} cores for Random Recommendations.")
 
     def process_song(song):
-        rec = random_sample(song["song"], song["artist"], infos, topK)
-        row = np.zeros(len(infos))
-        row[list(rec.index)] = 1
-        return row
+        source_id = song["id"]
+        recs = random_sample(song["song"], song["artist"], infos, topK)
+        recommendations = [
+            {"source_id": source_id, "target_id": rec["id"], "similarity": 1.0}
+            for _, rec in recs.iterrows()
+        ]
+        return recommendations
 
     with tqdm_joblib(desc="Processing Random Recommendations", total=len(infos)):
-        recs = Parallel(n_jobs=n_jobs)(delayed(process_song)(song) for _, song in infos.iterrows())
-    return np.array(recs)
+        results = Parallel(n_jobs=n_jobs)(delayed(process_song)(song) for _, song in infos.iterrows())
+
+    # Combine all recommendations into a single DataFrame
+    all_recommendations = [rec for rec_group in results for rec in rec_group]
+    return pd.DataFrame(all_recommendations)
 
 
 

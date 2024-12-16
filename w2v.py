@@ -59,16 +59,24 @@ def all_word2vec_recs(infos, word2vec, topK=10):
 
     def process_song(song):
         try:
+            source_id = song["id"]
             rec = word2vec_rec(song["song"], song["artist"], infos, word2vec, topK)
             infos_idx = rec["infos_idx"].values
             sims = rec["sim"].values
-            row = np.zeros(len(infos))
-            row[infos_idx] = sims
-            return row
+
+            recommendations = [
+                {"source_id": source_id, "target_id": infos.iloc[idx]["id"], "similarity": sim}
+                for idx, sim in zip(infos_idx, sims)
+            ]
+            return recommendations
         except Exception as e:
             print(f"Error processing song {song['song']} by {song['artist']}: {e}")
-            return np.zeros(len(infos))
+            return []
 
     with tqdm_joblib(desc="Processing Word2Vec Recommendations", total=len(infos)):
         recs = Parallel(n_jobs=n_jobs)(delayed(process_song)(song) for _, song in infos.iterrows())
-    return np.array(recs)
+
+        all_recommendations = [rec for rec_group in recs for rec in rec_group]
+        return pd.DataFrame(all_recommendations)
+
+        
