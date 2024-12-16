@@ -38,7 +38,7 @@ see the results of the model
 
 ## user interface
 
-run the user interface python file
+run the app.py python file
 
 open the browser with the given link
 
