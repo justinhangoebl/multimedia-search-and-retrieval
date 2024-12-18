@@ -1,7 +1,7 @@
 import numpy as np
 from tqdm import tqdm
-from metrics import *
-from measures import *
+from experimental_metrics import *
+from similarity_measures import *
 import warnings
 warnings.filterwarnings("ignore")
 
