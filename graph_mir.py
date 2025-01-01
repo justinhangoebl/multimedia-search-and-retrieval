@@ -6,7 +6,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.metrics.pairwise import cosine_similarity
 from tqdm import tqdm
 
-class MusicRetrievalSystem:
+class MusicRetrievalSystemGraph:
     def __init__(self, feature_files):
         self.feature_files = feature_files
         self.features = {}
