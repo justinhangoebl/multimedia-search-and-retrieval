@@ -38,8 +38,10 @@ see the results of the model
 
 ## user interface
 
-run the user interface python file
+Run the app.py python file
 
-open the browser with the given link
+Open the browser with the given link
 
-enter song title and song artist, make sure it exists
+Start entering the song or artist name and choose from the dropdown.
+
+You can take a look at the final webpage at https://huggingface.co/spaces/Abhi0531/MMSR-2
