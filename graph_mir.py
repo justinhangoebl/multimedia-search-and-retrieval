@@ -1,10 +1,12 @@
 import networkx as nx
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt 
 import umap
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics.pairwise import cosine_similarity
 from tqdm import tqdm
+from networkx.algorithms.community import louvain_communities
 
 class MusicRetrievalSystemGraph:
     def __init__(self, feature_files):
@@ -66,13 +68,49 @@ class MusicRetrievalSystemGraph:
         
         # Compute similarity matrix
         similarity_matrix = cosine_similarity(reduced_features)
-        similarity_matrix = cosine_similarity(fused_features)
         
         # Create graph based on similarity
         for i, id_i in tqdm(enumerate(common_ids), total=len(common_ids), desc="Creating graph"):
             for j, id_j in enumerate(common_ids):
                 if i != j and similarity_matrix[i, j] > similarity_threshold:
                     self.graph.add_edge(id_i, id_j, weight=similarity_matrix[i, j])
+    
+    def create_similarity_graph_late_fusion(self, similarity_threshold=0.75):
+        # Store similarity matrices for each modality
+        similarity_matrices = []
+        combined_ids = []
+
+        # Align features across different modalities
+        for _, feature_data in self.features.items():
+            combined_ids.append(feature_data['ids'])
+
+        # Ensure all feature sets have the same IDs
+        common_ids = set.intersection(*[set(ids) for ids in combined_ids])
+
+        # Process each modality
+        for feature_data in self.features.values():
+            # Align features with common IDs
+            aligned_subset = [
+                feature_data['normalized_features'][feature_data['ids'].index(id)]
+                for id in common_ids if id in feature_data['ids']
+            ]
+            
+            # Apply UMAP dimensionality reduction independently for each modality
+            reducer = umap.UMAP(n_components=10, random_state=42)
+            reduced_features = reducer.fit_transform(aligned_subset)
+            
+            # Compute similarity matrix for this modality
+            similarity_matrix = cosine_similarity(reduced_features)
+            similarity_matrices.append(similarity_matrix)
+
+        # Calculate the average similarity matrix across all modalities
+        average_similarity_matrix = np.mean(similarity_matrices, axis=0)
+
+        # Create graph based on averaged similarity matrix
+        for i, id_i in tqdm(enumerate(common_ids), total=len(common_ids), desc="Creating graph"):
+            for j, id_j in enumerate(common_ids):
+                if i != j and average_similarity_matrix[i, j] > similarity_threshold:
+                    self.graph.add_edge(id_i, id_j, weight=average_similarity_matrix[i, j])
         
     def recommend_similar_tracks(self, track_id, top_k=5):
         if track_id not in self.graph:
@@ -87,6 +125,29 @@ class MusicRetrievalSystemGraph:
         
         return neighbors[:top_k]
     
+    def personalized_recommendation(self, start_node, alpha=0.85, top_k=10):
+        """
+        Find similar songs using Personalized PageRank.
+        
+        :param start_node: ID of the song to start from
+        :param alpha: Restart probability for PageRank
+        :param top_n: Number of recommendations
+        :return: List of similar songs with scores
+        """
+        scores = nx.pagerank(self.graph, alpha=alpha, personalization={start_node: 1})
+        sorted_scores = sorted(scores.items(), key=lambda x: x[1], reverse=True)
+        return sorted_scores[:top_k]
+
+    def find_communities(self, graph):
+        """
+        Find song clusters using Louvain community detection.
+        
+        :param graph: The similarity graph (NetworkX Graph)
+        :return: List of communities (clusters of similar songs)
+        """
+        communities = louvain_communities(graph, weight='weight')
+        return communities
+
     def extract_multimodal_features(self):
         # Combine features from different modalities
         multimodal_features = {}

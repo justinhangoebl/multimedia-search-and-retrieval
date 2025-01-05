@@ -1,9 +1,12 @@
 import numpy as np
 import pandas as pd
+import os
+from tqdm import tqdm
+from tqdm_joblib import tqdm_joblib
+from joblib import Parallel, delayed
+from typing import Callable, Dict, List, Tuple
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics.pairwise import cosine_similarity
-from typing import Callable, Dict, List, Tuple
-from tqdm import tqdm
 
 class MultiModalLateFusionRetrieval:
     def __init__(self):
@@ -90,8 +93,6 @@ class MultiModalLateFusionRetrieval:
                          weights: Dict[str, float] = None,
                          custom_fusion_func: Callable = None) -> np.ndarray:
         """
-        Fuse similarity matrices using specified method
-        
         :param fusion_method: String identifying the fusion method or 'custom'
         :param weights: Dictionary of weights for weighted fusion
         :param custom_fusion_func: Custom fusion function that takes dict of similarity matrices
@@ -113,31 +114,30 @@ class MultiModalLateFusionRetrieval:
     
     def find_similar_tracks(self, 
                           query_id: str,
-                          top_k: int = 5,
+                          fused_similarities: np.ndarray = None,
+                          top_k: int = 10,
                           fusion_method: str = 'average',
                           weights: Dict[str, float] = None,
                           custom_fusion_func: Callable = None) -> List[Tuple[str, float]]:
         """
-        Find similar tracks using late fusion
-        
         :param query_id: ID of the query track
         :param top_k: Number of similar tracks to return
         :param fusion_method: Fusion method to use
         :param weights: Weights for weighted fusion
         :param custom_fusion_func: Custom fusion function
-        :return: List of (track_id, similarity_score) tuples
+        :return: List of (source_id, target_id, similarity) tuples
         """
         if not self._similarities_computed:
             self.compute_modality_similarities()
         if query_id not in self.track_ids:
             return []
         
-        # Get fused similarities
-        fused_similarities = self.fuse_similarities(
-            fusion_method=fusion_method,
-            weights=weights,
-            custom_fusion_func=custom_fusion_func
-        )
+        if(fused_similarities is None):
+            fused_similarities = self.fuse_similarities(
+                fusion_method=fusion_method,
+                weights=weights,
+                custom_fusion_func=custom_fusion_func
+            )
         
         # Get query track index
         query_idx = self.track_ids.index(query_id)
@@ -148,35 +148,53 @@ class MultiModalLateFusionRetrieval:
         # Get top-k similar tracks (excluding the query track)
         similar_indices = np.argsort(similarities)[::-1][1:top_k+1]
         
+        retrieved = []
+        
+        for idx in similar_indices:
+            track_id = self.track_ids[idx]
+            similarity = similarities[idx]
+            retrieved.append({
+                "source_id": query_id,
+                "target_id": track_id, 
+                "similarity": similarity
+                })
+
         # Return track IDs and similarity scores
-        return [
-            (self.track_ids[idx], similarities[idx])
-            for idx in similar_indices
-        ]
+        return retrieved
 
     def batch_similarity_search(self,
-                              query_ids: List[str],
-                              top_k: int = 5,
-                              fusion_method: str = 'average',
-                              weights: Dict[str, float] = None,
-                              custom_fusion_func: Callable = None) -> Dict[str, List[Tuple[str, float]]]:
-        """
-        Perform similarity search for multiple query tracks
+                                query_ids: List[str],
+                                top_k: int = 10,
+                                fusion_method: str = 'average',
+                                weights: Dict[str, float] = None,
+                                custom_fusion_func: Callable = None) -> Dict[str, List[Tuple[str, float]]]:
+        # Define the number of jobs (cores) for parallel processing
+        n_jobs = max(1, os.cpu_count() // 2)
+        print(f"Using {n_jobs} cores for batch similarity search.")
+        fused_similarities = self.fuse_similarities(
+                fusion_method=fusion_method,
+                weights=weights,
+                custom_fusion_func=custom_fusion_func
+            )
         
-        :param query_ids: List of track IDs to query
-        :param top_k: Number of similar tracks to return per query
-        :param fusion_method: Fusion method to use
-        :param weights: Weights for weighted fusion
-        :param custom_fusion_func: Custom fusion function
-        :return: Dict mapping query IDs to lists of similar tracks
-        """
-        results = {}
-        for query_id in tqdm(query_ids):
-            results[query_id] = self.find_similar_tracks(
+        def process_query(query_id):
+            # Perform the similarity search for each query_id
+            return self.find_similar_tracks(
                 query_id,
+                fused_similarities=fused_similarities,
                 top_k=top_k,
                 fusion_method=fusion_method,
                 weights=weights,
                 custom_fusion_func=custom_fusion_func
             )
-        return results
+
+        # Use joblib for parallel execution with progress bar
+        with tqdm(total=len(query_ids), desc="Processing batch similarity search") as pbar:
+            results = Parallel(n_jobs=n_jobs)(
+                delayed(process_query)(query_id) for query_id in query_ids
+            )
+
+            # Update the progress bar as each job completes
+            pbar.update(len(query_ids))
+
+        return [item for sublist in results for item in sublist]

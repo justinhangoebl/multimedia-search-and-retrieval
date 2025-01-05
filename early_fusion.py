@@ -1,8 +1,12 @@
 import numpy as np
 import pandas as pd
+import os
+from tqdm import tqdm
+from tqdm_joblib import tqdm_joblib
+from joblib import Parallel, delayed
+from typing import Callable, Dict, List, Tuple
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics.pairwise import cosine_similarity
-from tqdm import tqdm
 
 class MultiModalEarlyFusionRetrieval:
     def __init__(self):
@@ -86,21 +90,36 @@ class MultiModalEarlyFusionRetrieval:
         # Get top-k similar tracks (excluding the query track)
         similar_indices = np.argsort(similarities)[::-1][1:top_k+1]
         
+        retrieved = []
+        
+        for idx in similar_indices:
+            track_id = self.track_ids[idx]
+            similarity = similarities[idx]
+            retrieved.append({
+                "source_id": query_id,
+                "target_id": track_id, 
+                "similarity": similarity
+                })
+
         # Return track IDs and similarity scores
-        return [
-            (self.track_ids[idx], similarities[idx])
-            for idx in similar_indices
-        ]
+        return retrieved
 
     def batch_similarity_search(self, query_ids, top_k=5):
         """
-        Perform similarity search for multiple query tracks
-        
         :param query_ids: List of track IDs to query
         :param top_k: Number of similar tracks to return per query
         :return: Dict mapping query IDs to lists of similar tracks
         """
-        results = {}
-        for query_id in tqdm(query_ids):
-            results[query_id] = self.find_similar_tracks(query_id, top_k)
-        return results
+        n_jobs = max(1, os.cpu_count() // 2)
+        print(f"Using {n_jobs} cores for batch similarity search.")
+        # Define a function to perform the similarity search for a single query
+        def find_similar_tracks_parallel(query_id):
+            return self.find_similar_tracks(query_id, top_k)
+        
+        with tqdm_joblib(total=len(query_ids), desc="Performing Similarity Search", dynamic_ncols=True) as pbar:
+            # Use Parallel to perform the similarity search for all query_ids
+            query_results = Parallel(n_jobs=n_jobs)(delayed(find_similar_tracks_parallel)(query_id) for query_id in query_ids)
+
+            pbar.update(len(query_ids))  # Update progress bar after each result is processed
+
+        return [item for sublist in query_results for item in sublist]
