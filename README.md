@@ -44,4 +44,4 @@ Open the browser with the given link
 
 Start entering the song or artist name and choose from the dropdown.
 
-You can take a look at the final webpage at https://huggingface.co/spaces/Abhi0531/MMSR-2
+You can take a look at the final webpage at https://huggingface.co/spaces/Abhi0531/MMSR-3
