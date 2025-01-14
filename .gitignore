@@ -172,3 +172,5 @@ predictions/
 *.png
 
 results/
+
+images-graphs/

@@ -1,5 +1,6 @@
 import numpy as np
 import ast
+from collections import Counter
 
 #accurcay metrics
 
@@ -104,12 +105,41 @@ def novelty_at_k(y_pred, item_popularity, k=10):
     
     return np.mean(novelty_scores)
 
-def diversity_at_k(y_pred, tags, genre_tags, k=10):
+def calculate_tag_entropy(tags_list):
+    """
+    Calculate Shannon entropy of tag distribution.
+    Higher values indicate more diversity.
     
-    tags_list = [list(ast.literal_eval(d).keys()) for d in tags['(tag, weight)']]
+    Args:
+        tags_list (list): List of tag sets for each item
+    """
+    if not tags_list:
+        return 0
+        
+    # Flatten all tags and count frequencies
+    all_tags = [tag for tags in tags_list for tag in tags]
+    tag_counts = Counter(all_tags)
+    total_tags = len(all_tags)
+    
+    # Calculate entropy
+    entropy = 0
+    for count in tag_counts.values():
+        probability = count / total_tags
+        entropy -= probability * np.log2(probability)
+        
+    return entropy / np.log2(total_tags) if total_tags > 0 else 0
+    
+def filter_tags(tags, threshold):
+    tags_dict = ast.literal_eval(tags)
+    return {tag: weight for tag, weight in tags_dict.items() if weight > threshold}
+
+def diversity_at_k(y_pred, tags, genre_tags, k=10, threshold=74, filter=True):
+    tags = [filter_tags(tag, threshold) for tag in tags['(tag, weight)']] if filter else tags['(tag, weight)']
+    tags_list = [list(d.keys()) for d in tags]
+
     genre_tags = genre_tags['genre'].values
     result = [
-        list(set(row2) - set(row1)) for row1, row2 in zip(tags_list, genre_tags)
+        list(set(row1) - set(row2)) for row1, row2 in zip(tags_list, genre_tags)
     ]
 
     # Convert back to a 2D array
@@ -117,15 +147,12 @@ def diversity_at_k(y_pred, tags, genre_tags, k=10):
 
     top_k_items = np.argsort(y_pred, axis=1)[:, ::-1][:, :k]
     
-    diversity_scores = []
-    for items in top_k_items:
-        # Collect all tags for the recommended items
-        all_tags = set()
-        for item in items:
-            all_tags.update(tags_array[item])
-                
-        # Count the unique non-genre tags
-        diversity_scores.append(len(all_tags))
-    
-    # Return the average diversity score
-    return np.mean(diversity_scores)
+    entr_list = []
+    for retrieved_for_query in top_k_items:
+        list_of_tags = []
+        for tags in tags_array[retrieved_for_query]:
+            list_of_tags.append(tags)
+        entr = calculate_tag_entropy(list_of_tags)
+        entr_list.append(entr)
+        
+    return np.mean(entr_list)

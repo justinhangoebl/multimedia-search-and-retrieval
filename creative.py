@@ -74,13 +74,11 @@ class GraphMetaData:
             sorted_tempo.append(        self.metadata[self.metadata['id'] == row['id']]['tempo'].values[0])
             sorted_key.append(          self.metadata[self.metadata['id'] == row['id']]['key'].values[0])
 
-
         binned_danceability_scores =    self.__bin_scores(sorted_danceability,  bins=20)
         binned_energy_scores =          self.__bin_scores(sorted_energy,        bins=20)
         binned_valence_scores =         self.__bin_scores(sorted_valence,       bins=20)
         binned_tempo_scores =           self.__bin_scores(sorted_tempo,         bins=20)
         
-
         self.adj_danceability =  self.__create_adjacency_matrix(binned_danceability_scores)
         self.adj_energy =        self.__create_adjacency_matrix(binned_energy_scores)
         self.adj_valence =       self.__create_adjacency_matrix(binned_valence_scores)
@@ -149,13 +147,10 @@ class GraphMetaData:
         
         neighbors = defaultdict(int)
         for neighbor in self.__get_neighbors_with_weights(song_id):
-            print(neighbor)
             if(weighted):
                 neighbors[neighbor[0]] = neighbor[1]
             else:
                 neighbors[neighbor] = len(self.graph.get_edge_data(song_id, neighbor))
-
-        print(neighbors)
         
         similar_songs = sorted(neighbors.items(), key=lambda x: x[1], reverse=True)[:k]
         return [{"source_id": song_id, "target_id": target, "similarity": sim} 

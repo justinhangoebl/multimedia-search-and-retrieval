@@ -7,6 +7,7 @@ from joblib import Parallel, delayed
 from typing import Callable, Dict, List, Tuple
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics.pairwise import cosine_similarity
+from itertools import combinations
 
 class MultiModalLateFusionRetrieval:
     def __init__(self):
@@ -29,7 +30,12 @@ class MultiModalLateFusionRetrieval:
             try:
                 # Load feature matrix, assuming first column is ID
                 df = pd.read_csv(file_path, sep='\t', index_col=0)
-                
+                if feature_name == 'artist':
+                    self.features[feature_name] = {
+                        'artist': df['artist'].values,
+                        'ids': df.index.tolist()
+                    }
+                    continue
                 # Normalize numerical features
                 scaler = StandardScaler()
                 normalized_features = scaler.fit_transform(df)
@@ -62,6 +68,18 @@ class MultiModalLateFusionRetrieval:
         
         # Compute similarities for each modality
         for feature_name, feature_data in self.features.items():
+            if feature_name == 'artist':
+                # Get the artist for each song in common_ids
+                id_to_index = {id: idx for idx, id in enumerate(feature_data['ids'])}
+
+                common_artists = np.array([feature_data['artist'][id_to_index[id]] for id in common_ids])
+
+                # Create a binary similarity matrix using broadcasting
+                artist_similarity_matrix = (common_artists[:, None] == common_artists[None, :]).astype(int)
+
+                # Save the binary matrix in the similarities dictionary
+                self.similarities['artist'] = artist_similarity_matrix
+                continue
             # Get indices for common IDs
             indices = [feature_data['ids'].index(id) for id in common_ids]
             
@@ -70,6 +88,7 @@ class MultiModalLateFusionRetrieval:
             
             # Compute similarity matrix
             self.similarities[feature_name] = cosine_similarity(aligned_features)
+        
         
         self._similarities_computed = True
 

@@ -20,8 +20,8 @@ def kl_divergence(p, q, epsilon=1e-10):
     p /= np.sum(p)
     q /= np.sum(q)
     # Compute KL Divergence
-    return np.sum(p * np.log(p / q))
+    return np.sum(p * np.log2(p / q))
 
 def jensen_shannon_divergence(p, q):
     m = 0.5 * (p + q)
-    return 0.5 * kl_divergence(p, m) + 0.5 * kl_divergence(q, m)
+    return 1 - (0.5 * kl_divergence(p, m) + 0.5 * kl_divergence(q, m))
