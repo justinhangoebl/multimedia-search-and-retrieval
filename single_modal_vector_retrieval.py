@@ -88,7 +88,7 @@ def generate_single_modal_vector_retrieval(infos, bert, similarity_fn=cosine_sim
     return rets_df
 
 def generate_scores_matrix_for_sm_vectors(infos, bert, similarity_fn=cosine_similarity, topK=10):
-    n_jobs = max(1, os.cpu_count() -1)
+    n_jobs = max(1, os.cpu_count()//2)
     print(f"Using {n_jobs} cores for Single Modal Vector processing.")
 
     def process_song(song):

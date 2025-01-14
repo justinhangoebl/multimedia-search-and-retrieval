@@ -125,7 +125,7 @@ def greet(Song, Artist, Amount, model, dropdown_value=None):
         else:
             recommendations = recs[["Song", "Artist"]].to_markdown(index=False)
 
-        output += match_details + "Recommendations:\n\n" + recommendations + "\n\n"
+        output += match_details + "Retrieved Songs:\n\n" + recommendations + "\n\n"
 
     if len(matches) == 1:
         return output.strip(), gr.update(visible=True), gr.update(visible=True), matches.iloc[0]["song"].lower(), matches.iloc[0]["artist"].lower()
@@ -185,13 +185,13 @@ def compare_recommendations(song, artist, models_to_compare, amount):
                 common_recs = embed_links(common_recs)
                 common_recs = rename_columns(common_recs)
                 common_table = common_recs[["Song", "Artist"]].to_markdown(index=False)
-                output += "### Common Recommendations Across All Non-Random Models\n\n"
+                output += "### Common Songs Across All Non-Random Models\n\n"
                 output += common_table + "\n\n---\n\n"
 
     output += "<div style='display: flex; flex-wrap: wrap; gap: 10px;'>\n"
     for model, table in model_recommendations.items():
         output += f"<div style='flex: 1 1 calc(50% - 20px); padding: 10px; border: 1px solid #ccc;'>"
-        output += f"<h2><b>{model} Recommendations</b></h2>\n\n{table}</div>\n"
+        output += f"<h2><b>Songs Retrieved by {model}</b></h2>\n\n{table}</div>\n"
     output += "</div>\n"
 
     return output
@@ -235,7 +235,7 @@ with gr.Blocks(css=custom_css) as demo:
             dropdown_choices = gr.Dropdown(label="Multiple Matches, Please select one:", interactive=True, visible=False)
             exact_song_state = gr.State()
             exact_artist_state = gr.State()
-            amount_slider = gr.Slider(value=10, minimum=1, maximum=100, step=1, label="Number of Recommendations")
+            amount_slider = gr.Slider(value=10, minimum=1, maximum=100, step=1, label="Amount to retrieve")
             model_selection = gr.Radio(
                 [
                     "Random", "Bert", "TF-IDF", "Word2Vec",
@@ -247,7 +247,7 @@ with gr.Blocks(css=custom_css) as demo:
                 value="Bert",
             )
 
-            recommend_button = gr.Button("Recommend", elem_id="recommend-button")
+            recommend_button = gr.Button("Retrieve", elem_id="recommend-button")
             roll_dice_button = gr.Button("I'm feeling (un)lucky", visible=True)
 
             compare_models = gr.CheckboxGroup(
