@@ -2,7 +2,7 @@ import networkx as nx
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt 
-import umap
+from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics.pairwise import cosine_similarity
 from tqdm import tqdm
@@ -61,11 +61,15 @@ class MusicRetrievalSystemGraph:
         
         # Concatenate features across modalities
         fused_features = np.hstack(combined_features_aligned)
+        scaler = StandardScaler()
+        standardized = scaler.fit_transform(fused_features)
+
+        self.find_components(standardized)
         
         # Dimensionality reduction
-        reducer = umap.UMAP(n_components=10, random_state=42)
-        reduced_features = reducer.fit_transform(fused_features)
-        
+        reducer = PCA(n_components=10, random_state=42)
+        reduced_features = reducer.fit_transform(standardized)
+
         # Compute similarity matrix
         similarity_matrix = cosine_similarity(reduced_features)
         
@@ -74,6 +78,19 @@ class MusicRetrievalSystemGraph:
             for j, id_j in enumerate(common_ids):
                 if i != j and similarity_matrix[i, j] > similarity_threshold:
                     self.graph.add_edge(id_i, id_j, weight=similarity_matrix[i, j])
+
+    def find_components(self, standardized, variance_ratio=0.95):
+        # Initialize PCA without specifying number of components
+        pca = PCA()
+        
+        # Fit PCA
+        pca.fit(standardized)
+        
+        # Calculate cumulative explained variance ratio
+        cumulative_variance_ratio = np.cumsum(pca.explained_variance_ratio_)
+        
+        # Find number of components needed for desired variance ratio
+        n_components = np.argmax(cumulative_variance_ratio >= variance_ratio) + 1
     
     def create_similarity_graph_late_fusion(self, similarity_threshold=0.75):
         # Store similarity matrices for each modality
