@@ -22,6 +22,8 @@ Run the generation.ipynb notebook to get the tracks for simpler models.
 
 Run AutoEncoder.ipynb and MKGCN.ipynb to get the matrices and tracks for the UI.
 
+Late Fusion and Early Fusion are based on the models before ao if thosed worked we can just let them run.
+
 ## Evaluation
 
 Run the accuracy_experiments.ipynb notebook to get accuracies for all models.
