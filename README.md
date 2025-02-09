@@ -10,38 +10,38 @@ install requirements.txt
 pip install -r requirements.txt
 ```
 
-copy the dataset provided from the moodle in with the folder "dataset/..."
-
-## Steps to reproduce evaluation results
-
-1. run preprocessing
-
-2. run generation
-
-3. run evaluation
+Copy the dataset provided from the moodle in with the folder "dataset/..."
 
 ## Generate relevancy
 
-open preprocessing.ipynb
+Open preprocessing.ipynb and run the notebook to generate ground truths.
 
-run all cells to generate the ground truths
+## Generate models
 
-## generate models
+Run the generation.ipynb notebook to get the tracks for simpler models.
 
-run all cells in the generation ipynb to generate relevancy matrices for each model
+Run AutoEncoder.ipynb and MKGCN.ipynb to get the matrices and tracks for the UI.
 
 ## Evaluation
 
-run the evaluation python notebook
+Run the accuracy_experiments.ipynb notebook to get accuracies for all models.
 
-see the results of the model
+Run beyond_accuracy_experiments.ipynb for beyond accuracies.
 
-## user interface
+## User interface
 
-Run the app.py python file
+Hosted [here](https://huggingface.co/spaces/Abhi0531/MMSR-3)
 
-Open the browser with the given link
+Can be created locally by running app.py after the matrices have been generated. 
 
-Start entering the song or artist name and choose from the dropdown.
+Enter song name and/or artist name to get retrieved tracks. Partial matches also work, text fields work as a filtering technique. A dropdown helps select the desired track. 
 
-You can take a look at the final webpage at https://huggingface.co/spaces/Abhi0531/MMSR-3
+## Steps to reproduce evaluation results
+
+1. Run the preprocessing.ipynb notebook to get matrices required later.
+
+2. Run the generation.ipynb notebook to get recommendations for the simple models.
+
+3. Run the accuracy_experiments.ipynb and beyond_accuracy_experiments.ipynb notebooks to get the accuracy values.
+
+4. Run app.py for the UI.
