@@ -6,9 +6,7 @@ from joblib import Parallel, delayed
 from sklearn.metrics.pairwise import cosine_similarity
 import os
 import warnings
-
 warnings.filterwarnings("ignore")
-
 
 def ivec_rec(title, artist, infos, ivec256, ivec512, ivec1024, topK=10):
     if title and not artist:

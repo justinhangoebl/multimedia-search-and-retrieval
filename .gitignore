@@ -165,3 +165,12 @@ cython_debug/
 dataset/
 
 predictions/
+
+*.dot
+*.gexf
+*.csv
+*.png
+
+results/
+
+images-graphs/
