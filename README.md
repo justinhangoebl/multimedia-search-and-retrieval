@@ -20,7 +20,7 @@ Open preprocessing.ipynb and run the notebook to generate ground truths.
 
 Run the generation.ipynb notebook to get the tracks for simpler models.
 
-Run AutoEncoder.ipynb and MKGCN.ipynb to get the matrices and tracks for the UI.
+Run AutoEncoder.ipynb, MKGCN.ipynb, diversity-vs-ndcg.ipynb, early_fusion.ipynb, early_fusion_graph.ipynb, late_fusion.ipynb and metadata_graph.ipynb to get the matrices for the advanced models.
 
 ## Evaluation
 
@@ -40,7 +40,7 @@ Enter song name and/or artist name to get retrieved tracks. Partial matches also
 
 1. Run the preprocessing.ipynb notebook to get matrices required later.
 
-2. Run the generation.ipynb notebook to get recommendations for the simple models. Run AutoEncoder.ipynb and MKGCN.ipynb to get the matrices and tracks for the UI.
+2. Run the generation.ipynb notebook to get recommendations for the simple models. Run AutoEncoder.ipynb, MKGCN.ipynb, diversity-vs-ndcg.ipynb, early_fusion.ipynb, early_fusion_graph.ipynb, late_fusion.ipynb and metadata_graph.ipynb to get the matrices for the advanced models.
 
 3. Run the accuracy_experiments.ipynb and beyond_accuracy_experiments.ipynb notebooks to get the accuracy values.
 
