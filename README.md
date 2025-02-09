@@ -40,7 +40,7 @@ Enter song name and/or artist name to get retrieved tracks. Partial matches also
 
 1. Run the preprocessing.ipynb notebook to get matrices required later.
 
-2. Run the generation.ipynb notebook to get recommendations for the simple models.
+2. Run the generation.ipynb notebook to get recommendations for the simple models. Run AutoEncoder.ipynb and MKGCN.ipynb to get the matrices and tracks for the UI.
 
 3. Run the accuracy_experiments.ipynb and beyond_accuracy_experiments.ipynb notebooks to get the accuracy values.
 
